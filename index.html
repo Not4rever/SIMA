@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>СИМА — пост оператора акватории</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --deep:#08202c; --water:#0d2c3b; --shoal:#14394b; --land:#243a33;
+  --grid:#1b4257; --ink:#e8f1f4; --dim:#8aa6b2; --faint:#5b7784;
+  --line:#1f4659; --panel:#0b2735; --panel2:#0f3143;
+  --ok:#3fb68b; --known:#4a9fd4; --class:#e3a445; --unknown:#d9584a;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--deep);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:18px 16px 40px}
+
+header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:16px}
+h1{font-size:19px;font-weight:600;margin:0}
+header .sub{color:var(--dim);font-size:13px}
+header .team{margin-left:auto;color:var(--faint);font-size:12px}
+
+nav{display:flex;gap:2px}
+nav button{font:inherit;font-size:13px;color:var(--dim);background:transparent;
+  border:1px solid var(--line);border-bottom-color:transparent;
+  padding:8px 16px;cursor:pointer;border-radius:4px 4px 0 0;margin-bottom:-1px}
+nav button[aria-selected=true]{color:var(--ink);background:var(--panel);border-bottom-color:var(--panel)}
+nav button:focus-visible{outline:2px solid var(--known);outline-offset:1px}
+.tabline{height:1px;background:var(--line);margin:0 0 16px}
+
+.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+/* карта остаётся на виду, пока оператор работает с карточкой справа */
+@media(min-width:881px){
+  #p1 .cols > div:first-child{position:sticky;top:calc(8px + env(safe-area-inset-top,0px));align-self:start}
+}
+@media(max-width:880px){.cols{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:16px}
+.panel:last-child{margin-bottom:0}
+.panel h2{font-size:12px;font-weight:600;color:var(--dim);margin:0;
+  padding:10px 14px;border-bottom:1px solid var(--line);letter-spacing:.04em}
+.panel .body{padding:14px}
+
+svg.chart{display:block;width:100%;height:auto}
+.contact{cursor:pointer}
+.contact:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.legend{display:flex;flex-wrap:wrap;gap:12px;padding:10px 14px;
+  border-top:1px solid var(--line);font-size:12px;color:var(--dim)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:50%;display:block}
+
+.row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
+  border-bottom:1px solid var(--line);font-size:13px}
+.row:last-child{border-bottom:0}
+.row .k{color:var(--dim);flex-shrink:0}
+.row .v{text-align:right}
+.masked{color:var(--faint);font-style:italic}
+
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;
+  padding:3px 9px;border-radius:3px;font-weight:500}
+.b-ok{background:rgba(63,182,139,.15);color:var(--ok)}
+.b-known{background:rgba(74,159,212,.15);color:var(--known)}
+.b-class{background:rgba(227,164,69,.15);color:var(--class)}
+.b-unknown{background:rgba(217,88,74,.15);color:var(--unknown)}
+.b-gray{background:rgba(138,166,178,.15);color:var(--dim)}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+button.act{font:inherit;font-size:13px;padding:9px 14px;border-radius:4px;
+  border:1px solid var(--known);background:transparent;color:var(--known);cursor:pointer}
+button.act:hover:not(:disabled){background:rgba(74,159,212,.12)}
+button.act:disabled{opacity:.38;cursor:default}
+button.act.primary{background:var(--known);color:#06202c;font-weight:600}
+button.act.primary:hover:not(:disabled){background:#5eabdc}
+button.act:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.measures{margin-top:12px;padding:11px 12px;border-radius:4px;
+  background:var(--panel2);border-left:3px solid var(--line);font-size:12.5px}
+.measures .t{color:var(--dim);margin-bottom:5px}
+.measures ul{margin:0;padding-left:17px}
+
+.threat{margin-top:12px;padding:11px 12px;border-radius:4px;background:var(--panel2);
+  border-left:3px solid var(--line);font-size:12.5px}
+.threat .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.threat .lvl{font-weight:600}
+.threat .why{color:var(--dim);font-size:12px}
+.t-low{border-left-color:var(--ok)}      .t-low .lvl{color:var(--ok)}
+.t-mid{border-left-color:var(--known)}   .t-mid .lvl{color:var(--known)}
+.t-high{border-left-color:var(--class)}  .t-high .lvl{color:var(--class)}
+.t-max{border-left-color:var(--unknown)} .t-max .lvl{color:var(--unknown)}
+.cmd{margin-top:12px;padding:11px 12px;border-radius:4px;background:var(--panel2);
+  border-left:3px solid var(--coral,#e3a445);font-size:12.5px}
+.cmd .t{color:var(--dim);margin-bottom:6px}
+.cmd button{font:inherit;font-size:12px;padding:6px 10px;margin:3px 4px 0 0;border-radius:3px;
+  border:1px solid var(--class);background:transparent;color:var(--class);cursor:pointer}
+.cmd button:disabled{opacity:.35;cursor:default}
+.unverified{margin-top:12px;padding:10px 12px;border-radius:4px;
+  background:rgba(74,159,212,.08);border-left:3px solid var(--known);
+  font-size:12.5px;color:#bcd8e8}
+.verified{margin-top:12px;padding:10px 12px;border-radius:4px;
+  background:rgba(63,182,139,.10);border-left:3px solid var(--ok);
+  font-size:12.5px;color:#a8e3cb}
+.alarm{margin-top:12px;padding:10px 12px;border-radius:4px;
+  background:rgba(217,88,74,.12);border-left:3px solid var(--unknown);
+  font-size:12.5px;color:#f3b5ae}
+
+.log{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;
+  max-height:210px;overflow-y:auto;line-height:1.65}
+.log div{padding:2px 0;border-bottom:1px solid rgba(31,70,89,.5);color:var(--dim)}
+.log div:last-child{border-bottom:0}
+.log .tm{color:var(--faint)}
+.log .hi{color:var(--ink)}
+.log .warn{color:#f3b5ae}
+.log .good{color:#8fe0c2}
+
+.progress{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:12px}
+.progress i{display:block;height:100%;width:0;background:var(--known);transition:width .1s linear}
+
+.params{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.params label{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}
+.params select{width:100%;font:inherit;font-size:13px;padding:7px 9px;
+  background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--ink)}
+.params select:focus-visible{outline:2px solid var(--known);outline-offset:1px}
+.params input[type=number]{width:100%;font:inherit;font-size:13px;padding:7px 9px;
+  background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--ink)}
+.params input:focus-visible{outline:2px solid var(--known);outline-offset:1px}
+.toggle{grid-column:1/-1;display:flex;align-items:center;gap:9px;font-size:13px;margin-top:2px}
+.toggle input{width:16px;height:16px;accent-color:var(--known)}
+.pnote{grid-column:1/-1;color:var(--faint);font-size:12px;margin:2px 0 0}
+
+.bits{display:flex;flex-wrap:wrap;gap:2px;margin:6px 0 12px}
+.bitfield{border-radius:3px;padding:7px 9px;font-size:11.5px;text-align:center;
+  border:1px solid var(--line);background:var(--panel2);flex-grow:1}
+.bitfield .n{display:block;color:var(--dim);font-size:10.5px;margin-bottom:2px}
+.bitfield .b{font-family:"IBM Plex Mono",monospace;color:var(--ink);word-break:break-all;font-size:11px}
+
+.hex{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--known);
+  background:var(--panel2);padding:10px 12px;border-radius:4px;word-break:break-all;margin:8px 0 0}
+.hex.sig{color:var(--ok);font-size:11.5px}
+.hex.sig.bad{color:var(--unknown)}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-weight:500;font-size:11.5px}
+th.num{text-align:right}
+td.num{font-family:"IBM Plex Mono",monospace;text-align:right;white-space:nowrap}
+th.num{text-align:right}
+tr.total td{border-bottom:0;color:var(--ink);font-weight:600;padding-top:10px}
+
+.note{color:var(--dim);font-size:12.5px;margin:12px 0 0}
+.disc{margin-top:12px;padding:10px 12px;border-radius:4px;background:var(--panel2);
+  border-left:3px solid var(--known);font-size:12.5px}
+.disc .t{color:var(--dim);margin-bottom:6px}
+.disc button{font:inherit;font-size:12px;padding:6px 10px;margin:3px 4px 0 0;
+  border-radius:3px;border:1px solid var(--known);background:transparent;color:var(--known);cursor:pointer}
+.disc button:disabled{opacity:.35;cursor:default}
+.cool{margin-top:12px;padding:10px 12px;border-radius:4px;
+  background:rgba(227,164,69,.10);border-left:3px solid var(--class);
+  font-size:12.5px;color:#f0d49b}
+.incident{margin-top:9px;padding:10px 11px;border-radius:4px;background:var(--panel2);
+  border:1px solid var(--line)}
+.incident select{width:100%;font:inherit;font-size:12.5px;padding:7px 9px;margin:5px 0 7px;
+  background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--ink)}
+.incident select:focus-visible{outline:2px solid var(--known);outline-offset:1px}
+.pending{color:var(--class);font-size:12.5px;margin-top:6px}
+.granted{color:var(--ok);font-size:12.5px;margin-top:6px}
+.slots{margin-top:12px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  background:var(--panel2);border-radius:4px;padding:10px 12px;color:var(--dim)}
+.slots b{color:var(--ink);font-weight:500}
+.scroll{overflow-x:auto}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>СИМА</h1>
+  <span class="team">команда «Контур» · РУТ (МИИТ)</span>
+</header>
+
+<nav role="tablist">
+  <button role="tab" id="t1" aria-selected="true">Пост оператора</button>
+  <button role="tab" id="t2" aria-selected="false">Расчёт и формат кадра</button>
+</nav>
+<div class="tabline"></div>
+
+<section id="p1">
+<div class="cols">
+  <div>
+    <div class="panel">
+      <h2>Акватория порта · трасса кабеля <span id="clock" style="float:right;font-family:'IBM Plex Mono',monospace;color:var(--known)">00:00</span></h2>
+      <svg class="chart" viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Карта акватории">
+        <defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M40 0H0V40" fill="none" stroke="#1b4257" stroke-width="0.5"/></pattern></defs>
+        <rect width="640" height="400" fill="#0d2c3b"/>
+        <path d="M0 0 H640 V115 Q520 143 400 126 T180 141 Q80 149 0 134 Z" fill="#14394b"/>
+        <rect width="640" height="400" fill="url(#g)"/>
+        <path d="M0 0 H640 V50 Q500 71 360 56 T140 69 Q60 75 0 63 Z" fill="#243a33"/>
+        <text x="14" y="29" fill="#5b7784" font-size="11" font-family="IBM Plex Sans">Берег · порт</text>
+        <rect x="250" y="50" width="9" height="28" fill="#2f4a41"/>
+        <rect x="290" y="54" width="9" height="24" fill="#2f4a41"/>
+        <line x1="0" y1="318" x2="640" y2="286" stroke="#e3a445" stroke-width="1.2" stroke-dasharray="7 5" opacity="0.55"/>
+        <text x="14" y="310" fill="#8a7448" font-size="10.5" font-family="IBM Plex Sans">Кабель связи</text>
+        <g fill="none" stroke="#4a9fd4" stroke-width="1" opacity="0.5">
+          <circle cx="120" cy="312" r="5"/><circle cx="360" cy="300" r="5"/>
+          <circle cx="545" cy="291" r="5"/><circle cx="275" cy="86" r="5"/></g>
+        <g id="coverage"></g>
+        <g id="groups"></g>
+        <g id="marks"></g>
+      </svg>
+      <div class="legend">
+        <span><i style="background:#8aa6b2"></i>Не опрошен</span>
+        <span><i style="background:#3fb68b"></i>Подтверждён</span>
+        <span><i style="background:#4a9fd4"></i>Опознан</span>
+        <span><i style="background:#e3a445"></i>Классифицирован</span>
+        <span><i style="background:#d9584a"></i>Не опознан</span>
+        <span style="margin-left:auto"><i style="border:1px solid #4a9fd4;background:transparent"></i>Узел mesh-сети</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Параметры канала</h2>
+      <div class="body">
+        <div class="params">
+          <div>
+            <label for="pRate">Скорость канала, бит/с</label>
+            <input type="number" id="pRate" value="92" min="10" max="9200" step="10">
+          </div>
+          <div>
+            <label for="pSpeed">Ход времени</label>
+            <select id="pSpeed">
+              <option value="0">пауза</option>
+              <option value="1">×1 · реальное время</option>
+              <option value="10" selected>×10</option>
+              <option value="60">×60</option>
+            </select>
+          </div>
+          <div class="toggle">
+            <input type="checkbox" id="pAuto">
+            <label for="pAuto" style="margin:0">Автоматический опрос новых контактов</label>
+          </div>
+          <p class="pnote" id="pOut">—</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Карточка контакта</h2>
+      <div class="body" id="card"><p class="note" style="margin:0">Выберите отметку на карте.</p></div>
+    </div>
+    <div class="panel">
+      <h2>Журнал опроса</h2>
+      <div class="body log" id="log"><div><span class="tm">--:--:--</span> инициализация ключей…</div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="p2" class="hidden">
+<div class="cols">
+  <div class="panel">
+    <h2>Идентификационный кадр · 128 бит</h2>
+    <div class="body">
+      <p class="note" id="frameFor" style="margin-top:0">Контакт не выбран.</p>
+      <div class="bits" id="bits"></div>
+      <div class="hex" id="hex">—</div>
+      <p class="note" id="sigLabel" style="display:none">Подпись ECDSA P-256 по случайному числу, 512 бит:</p>
+      <div class="hex sig" id="sigHex" style="display:none">—</div>
+      <p class="note">Код класса раскладывается на шесть подполей.</p>
+      <div class="scroll"><table id="clsTable"></table></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Расчёт цикла опроса</h2>
+    <div class="body">
+      <div class="scroll"><table id="calc"></table></div>
+      <p class="note" id="calcNote"></p>
+    </div>
+  </div>
+</div>
+</section>
+
+</div>
+
+<script>
+"use strict";
+
+/* ===== расчётное ядро ===== */
+let RATE = 92;
+const FEC = 2, PREAMBLE = 200, VSOUND = 1500, PROC = 3.0;
+const AIR_RESP = 128*FEC + PREAMBLE;   // 456
+const AIR_INT  = 64*FEC  + PREAMBLE;   // 328
+const AIR_SIGN = 576*FEC + PREAMBLE;   // 1352 — эхо nonce 64 бит + подпись 512 бит
+
+const cycleTime = (d, air = AIR_RESP) =>
+  AIR_INT/RATE + d/VSOUND + air/RATE + d/VSOUND + PROC;
+
+// окно ответа в групповом опросе: передача ответа + распространение
+const slotTime = d => AIR_RESP/RATE + d/VSOUND;
+// групповой цикл при реестровом распределении окон (без коллизий)
+const groupTime = (d,n) => AIR_INT/RATE + d/VSOUND + n*slotTime(d) + PROC;
+// норматив интервала для подводного аппарата: полный цикл погружения
+const diveInterval = c => c.depth && c.vvert ? 2*c.depth/c.vvert : 0;
+
+const PLATFORM=["надводный водоизмещающий","надводный глиссирующий","полупогружной",
+  "подводный с движителем","глайдер","донный","буксируемый","гибрид"];
+const SIZE=["до 1 м","1–3 м","3–12 м","12–24 м","24–50 м","50–100 м","свыше 100 м"];
+const CONTROL=["телеуправляемый по кабелю","телеуправляемый по радио","супервизорный","автономный"];
+const POWER=["аккумулятор","гибрид","топливный элемент","иное"];
+const ENDUR=["часы","сутки","неделя","месяц","свыше месяца"];
+const OWNER=["государственный гражданский","коммерческий","научный","частный","международная организация"];
+const MISSION=["транзит","инспекция инфраструктуры","гидрография","экология",
+  "доставка груза","аквакультура","поиск и спасание","обеспечение безопасности"];
+
+function packClass(c){let v=0n;
+  [[c.platform,3],[c.size,3],[c.control,2],[c.power,2],[c.endur,3],[c.owner,3]]
+   .forEach(([x,b])=>{v=(v<<BigInt(b))|BigInt(x);});return v;}
+function packFrame(k){let v=0n;
+  v=(v<<4n)|1n; v=(v<<64n)|k.mdid; v=(v<<16n)|packClass(k.cls);
+  v=(v<<4n)|BigInt(k.mission); v=(v<<8n)|BigInt(k.flags);
+  v=(v<<16n)|BigInt(k.permit); v=(v<<16n)|BigInt(k.crc); return v;}
+const bin=(v,n)=>v.toString(2).padStart(n,"0");
+const hex=v=>"0x"+v.toString(16).padStart(32,"0").toUpperCase();
+const b2h=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase();
+
+/* ===== реестр ключей (Web Crypto, ECDSA P-256) ===== */
+const REGISTRY = new Map();   // mdid -> открытый ключ, как в федерации реестров
+const KEYS = new Map();       // mdid -> закрытый ключ, «на борту аппарата»
+
+async function issueCert(mdid){
+  const kp = await crypto.subtle.generateKey(
+    {name:"ECDSA", namedCurve:"P-256"}, true, ["sign","verify"]);
+  KEYS.set(mdid, kp.privateKey);
+  REGISTRY.set(mdid, kp.publicKey);
+}
+async function signNonce(mdid, nonce){
+  const k = KEYS.get(mdid); if(!k) return null;
+  return crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"}, k, nonce);
+}
+async function verifyNonce(mdid, nonce, sig){
+  const k = REGISTRY.get(mdid); if(!k || !sig) return false;
+  return crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"}, k, sig, nonce);
+}
+const newNonce = () => crypto.getRandomValues(new Uint8Array(8));
+
+/* ===== контакты ===== */
+const C = [
+  { id:"A", tag:"К-01", x:250, y:150, course:25, speed:5.0, enter:0,
+    surfaced:true, medium:"УКВ", name:"Балтика-7",
+    mdid:0x0070000000000C41n, permit:0x9A17, crc:0x0000, flags:0b10011000, mission:4,
+    cls:{platform:0,size:4,control:2,power:1,endur:1,owner:1},
+    owner:"ООО «Северная линия», Россия", answers:true, hasKey:true, secret:true,
+    ctrl:"ЦДУ «Северная линия», Санкт-Петербург · mdis://ru/0C41/ctrl",
+    port:"причал 4, окно 14:20–15:00", level:0 },
+
+  { id:"B", tag:"К-02", x:330, y:305, course:75, speed:1.2, enter:0,
+    surfaced:false, medium:"гидроакустика", name:"Гидра-3",
+    mdid:0x0070000000001A2Bn, permit:0x4F2C, crc:0x0000, flags:0b10010100, mission:1,
+    cls:{platform:3,size:2,control:3,power:0,endur:3,owner:2},
+    owner:"Институт океанологии, Россия", answers:true, hasKey:true,
+    ctrl:"Пост управления ИО РАН, Калининград · mdis://ru/1A2B/ctrl",
+    port:"охранная зона кабеля, работы по заявке владельца", level:0,
+    depth:300, vvert:0.5 },
+
+  { id:"C", tag:"К-03", x:420, y:230, course:55, speed:0.4, enter:20,
+    surfaced:true, amphibious:true, medium:"УКВ", name:"Ветер-12",
+    mdid:0x00A0000000003F55n, permit:0x0000, crc:0x0000, flags:0b00010000, mission:3,
+    cls:{platform:4,size:1,control:3,power:0,endur:4,owner:2},
+    owner:"Морской университет, Норвегия", answers:true, hasKey:true,
+    ctrl:"NTNU Marine Ops, Тронхейм · mdis://no/3F55/ctrl",
+    port:"допуск не предъявлен", level:0, depth:200, vvert:0.10, diveAt:90 },
+
+  { id:"D", tag:"К-04", x:160, y:280, course:70, speed:1.5, enter:40,
+    surfaced:false, medium:"гидроакустика", name:null,
+    answers:false, portrait:"подводный с движителем, 3–12 м, электродвижитель",
+    level:0, depth:150, vvert:0.5 },
+
+  { id:"E1", tag:"К-05", x:498, y:112, course:245, speed:3.0, enter:60,
+    surfaced:true, medium:"УКВ", name:"Веха", group:"VEKHA", gateway:true, groupSize:4,
+    roster:["5E00","5E01","5E02","5E03"],
+    mdid:0x0070000000005E00n, permit:0x71B3, crc:0x0000, flags:0b10011010, mission:2,
+    cls:{platform:1,size:0,control:3,power:0,endur:0,owner:1},
+    owner:"АО «Гидрограф», Россия", answers:true, hasKey:true,
+    ctrl:"Диспетчерская АО «Гидрограф», Мурманск · mdis://ru/5E08/ctrl",
+    port:"съёмка по заявке, квадрат 12", level:0 },
+
+  { id:"E2", tag:"К-07", x:520, y:125, course:245, speed:3.0, enter:62,
+    surfaced:true, medium:"УКВ", name:"Веха", group:"VEKHA",
+    mdid:0x0070000000005E01n, permit:0x71B3, crc:0x0000, flags:0b10011010, mission:2,
+    cls:{platform:1,size:0,control:3,power:0,endur:0,owner:1},
+    owner:"АО «Гидрограф», Россия", answers:true, hasKey:true,
+    port:"съёмка по заявке, квадрат 12", level:0 },
+
+  { id:"E3", tag:"К-08", x:489, y:134, course:245, speed:3.0, enter:64,
+    surfaced:true, medium:"УКВ", name:"Веха", group:"VEKHA",
+    mdid:0x0070000000005E02n, permit:0x71B3, crc:0x0000, flags:0b10011010, mission:2,
+    cls:{platform:1,size:0,control:3,power:0,endur:0,owner:1},
+    owner:"АО «Гидрограф», Россия", answers:true, hasKey:true,
+    port:"съёмка по заявке, квадрат 12", level:0 },
+
+  { id:"E4", tag:"К-09", x:534, y:104, course:128, speed:5.2, enter:66,
+    surfaced:true, medium:"УКВ", name:"Веха", group:"VEKHA", strays:true,
+    mdid:0x0070000000005E03n, permit:0x71B3, crc:0x0000, flags:0b10011010, mission:2,
+    cls:{platform:1,size:0,control:3,power:0,endur:0,owner:1},
+    owner:"АО «Гидрограф», Россия", answers:true, hasKey:true,
+    port:"съёмка по заявке, квадрат 12", level:0 },
+
+  { id:"F", tag:"К-06", x:390, y:315, course:280, speed:1.4, enter:110,
+    surfaced:false, medium:"гидроакустика", name:"Гидра-3",
+    mdid:0x0070000000001A2Bn, permit:0x4F2C, crc:0x0000, flags:0b10010100, mission:1,
+    cls:{platform:3,size:2,control:3,power:0,endur:3,owner:2},
+    owner:"Институт океанологии, Россия", answers:true, hasKey:false, spoof:true,
+    port:"охранная зона кабеля, работы по заявке владельца", level:0,
+    depth:200, vvert:0.5 }
+];
+
+const LV=[
+ {n:"Не опознан",cl:"b-unknown",col:"#d9584a",
+  m:["Отказ в допуске в зону","Меры по удалению из зоны после полной процедуры","Запись в журнал обязательна"]},
+ {n:"Классифицирован",cl:"b-class",col:"#e3a445",
+  m:["Наблюдение","Сближение для повторного опроса","Оповещение владельца инфраструктуры"]},
+ {n:"Опознан",cl:"b-known",col:"#4a9fd4",
+  m:["Допуск с сопровождением","Запрос подтверждения подписью"]},
+ {n:"Подтверждён",cl:"b-ok",col:"#3fb68b",
+  m:["Допуск в соответствии с выданным разрешением"]}
+];
+
+/* ===== обстановка в акватории ===== */
+const SCALE = 37.5;                      // метров на пиксель карты
+const NODES = [{x:120,y:312},{x:360,y:300},{x:545,y:291},{x:275,y:86}];
+const R_AC = 3000/SCALE;                 // акустический опрос, 3 км
+const R_RF = 8000/SCALE;                 // радиоканал, 8 км
+
+let simTime = 0, timeScale = 10, lastTs = 0;
+
+const curDist = c => nearestNode(c).m;
+
+function nearestNode(c){
+  let best=null, bd=1e9;
+  for(const n of NODES){
+    const d=Math.hypot(c.x-n.x,c.y-n.y);
+    if(d<bd){bd=d;best=n;}
+  }
+  return {node:best, px:bd, m:Math.round(bd*SCALE)};
+}
+// узел mesh-сети излучает одновременно по радио и по звуку: заранее неизвестно, где цель
+function reach(c){
+  const d = nearestNode(c).px;
+  return { rf: c.surfaced && d <= R_RF, ac: d <= R_AC, px: d, m: Math.round(d*SCALE) };
+}
+
+function detected(c){
+  if(simTime < c.enter) return false;
+  if(c.x<-20||c.x>660||c.y<-20||c.y>420) return false;
+  return nearestNode(c).px <= (c.surfaced ? R_RF : R_AC);
+}
+
+/* ===== зоны акватории и оценка угрозы ===== */
+// приоритет заказчика: в первую очередь система обязана опознавать, представляет ли аппарат угрозу
+function zoneOf(c){
+  if(c.y < 150) return {name:"подход к порту", w:2};
+  const d = Math.abs(c.y - (318 - c.x*0.05));          // удаление от трассы кабеля
+  if(d < 45)    return {name:"охранная зона кабеля", w:3};
+  return {name:"открытая часть акватории", w:0};
+}
+
+function threatOf(c){
+  const z = zoneOf(c);
+  // поведение: чем мельче и незаметнее аппарат, тем выше исходная настороженность
+  let beh = 3;
+  if(c.cls){
+    beh = c.cls.size <= 1 ? 3 : c.cls.size >= 4 ? 1 : 2;
+    if(c.cls.platform === 2) beh += 1;                 // полупогружной
+  }
+  // вне покрытия не равно уклонению: запрос физически не дошёл
+  const ident = c.noReach ? 2 : [3,2,1,0][c.level];
+  // законное присутствие снимает вес зоны, но только при доказанной подлинности
+  const authorized = (c.permit && c.level===3) ? z.w + 1
+                   : (c.permit && c.level===2 && !c.sigFail) ? 2 : 0;
+  const penalty = (c.sigFail?3:0) + (c.dupAlarm?2:0);
+  const score = Math.max(0, beh + z.w + ident - authorized + penalty);
+  const lvl = score>=7 ? {n:"высокая",    cl:"t-max"}
+            : score>=5 ? {n:"повышенная", cl:"t-high"}
+            : score>=3 ? {n:"умеренная",  cl:"t-mid"}
+                       : {n:"низкая",     cl:"t-low"};
+  const why = [
+    c.cls ? (c.cls.size<=1?"малоразмерный":c.cls.size>=4?"крупный":"средний")+" аппарат"
+          : "класс не определён",
+    z.name,
+    c.noReach ? "запрос не дошёл · вне покрытия"
+              : ["не опознан","класс по портрету","опознан без подписи","подлинность подтверждена"][c.level],
+    authorized ? "законное присутствие подтверждено" : null,
+    c.sigFail ? "подпись не прошла проверку" : null,
+    c.dupAlarm ? "номер предъявлен дважды" : null
+  ].filter(Boolean).join(" · ");
+  return {score, lvl, why, zone:z.name};
+}
+
+let sel=null, busy=false, realTime=false, autoPoll=false;
+const autoQueue = [];
+
+// до опознания оператор видит только тактический номер, не имя аппарата
+const shownName = c => (c.level>=2 && c.name) ? c.name : c.tag;
+const groupOf = g => C.filter(x=>x.group===g);
+
+// ядро группы и отбившиеся: центр считается по всем, затем уточняется без выбросов
+function clusterOf(g){
+  const m = groupOf(g).filter(detected);
+  if(!m.length) return {core:[], stray:[], cx:0, cy:0};
+  let cx = m.reduce((a,c)=>a+c.x,0)/m.length, cy = m.reduce((a,c)=>a+c.y,0)/m.length;
+  let core = m.filter(c=>Math.hypot(c.x-cx,c.y-cy) <= 45);
+  if(core.length && core.length < m.length){
+    cx = core.reduce((a,c)=>a+c.x,0)/core.length;
+    cy = core.reduce((a,c)=>a+c.y,0)/core.length;
+    core = m.filter(c=>Math.hypot(c.x-cx,c.y-cy) <= 45);
+  }
+  return {core, stray: m.filter(c=>!core.includes(c)), cx, cy};
+}
+const inCore = c => c.group && c.level>=2 && clusterOf(c.group).core.includes(c);
+const gatewayOf = g => C.find(x=>x.group===g && x.gateway);
+
+// уровень 2 открывается не по цепочке кнопок, а при наличии правового основания
+const GROUNDS = [
+  "повреждение подводной инфраструктуры",
+  "нарушение границы охранной зоны",
+  "отказ от выполнения команды",
+  "столкновение или угроза столкновения",
+  "нарушение условий выданного допуска"
+];
+
+function incidentGround(c){
+  if(c.dupAlarm) return "дубликат идентификатора в одном цикле опроса";
+  if(c.sigFail)  return "подпись не прошла проверку открытым ключом реестра";
+  if(c.probed && c.level===0 && !c.noReach) return "отказ от идентификации после полной процедуры";
+  if(c.declared && c.approved) return "заявление оператора · "+c.declared;
+  return null;
+}
+const groundIsFact = c => !!(c.dupAlarm || c.sigFail || (c.probed && c.level===0 && !c.noReach));
+
+/* ===== карта ===== */
+function drawCoverage(){
+  const g=document.getElementById("coverage");
+  g.innerHTML = NODES.map(n=>
+    `<circle cx="${n.x}" cy="${n.y}" r="${R_AC.toFixed(0)}" fill="#4a9fd4" fill-opacity="0.05"
+       stroke="#4a9fd4" stroke-opacity="0.18" stroke-width="0.8" stroke-dasharray="3 4"/>`).join("");
+}
+
+const MARK = new Map();   // контакт -> элемент на карте, создаётся один раз
+
+function makeMark(c){
+  const SVGNS="http://www.w3.org/2000/svg";
+  const el=document.createElementNS(SVGNS,"g");
+  el.setAttribute("class","contact");
+  el.setAttribute("tabindex","0");
+  el.setAttribute("role","button");
+  const ring=document.createElementNS(SVGNS,"circle");
+  const dot =document.createElementNS(SVGNS,"circle"); dot.setAttribute("r","4");
+  const vec =document.createElementNS(SVGNS,"line"); vec.setAttribute("stroke-width","1");
+  vec.setAttribute("opacity","0.6");
+  const hit =document.createElementNS(SVGNS,"circle");   // прозрачная область нажатия
+  hit.setAttribute("r","18"); hit.setAttribute("fill","transparent");
+  const txt =document.createElementNS(SVGNS,"text");
+  txt.setAttribute("font-size","11.5"); txt.setAttribute("font-family","IBM Plex Sans");
+  el.append(ring,vec,dot,hit,txt);
+  const pick=()=>{sel=c;render();};
+  el.addEventListener("click",pick);
+  el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});
+  document.getElementById("marks").appendChild(el);
+  return {el,ring,dot,vec,hit,txt};
+}
+
+function drawGroups(){
+  const g = document.getElementById("groups");
+  const names = [...new Set(C.filter(c=>c.group && c.level>=2 && detected(c)).map(c=>c.group))];
+  g.innerHTML = names.map(id=>{
+    const cl = clusterOf(id), m = cl.core;
+    if(m.length < 2) return "";
+    const pad = 20;
+    const x1 = Math.min(...m.map(c=>c.x)) - pad, x2 = Math.max(...m.map(c=>c.x)) + pad;
+    const y1 = Math.min(...m.map(c=>c.y)) - pad, y2 = Math.max(...m.map(c=>c.y)) + pad;
+    const gw = gatewayOf(id);
+    const total = groupOf(id).filter(detected).length;
+    const lblRight = x2 > 470;
+    return `<rect x="${x1.toFixed(1)}" y="${y1.toFixed(1)}"
+        width="${(x2-x1).toFixed(1)}" height="${(y2-y1).toFixed(1)}" rx="14"
+        fill="#4a9fd4" fill-opacity="0.04" stroke="#4a9fd4" stroke-opacity="0.45"
+        stroke-width="0.9" stroke-dasharray="6 4"/>
+      <text x="${(lblRight?x2:x1).toFixed(1)}" y="${(y1-6).toFixed(1)}" fill="#8aa6b2" font-size="11"
+        text-anchor="${lblRight?"end":"start"}"
+        font-family="IBM Plex Sans">группа «${gw?gw.name:""}» · ${m.length} из ${total} ед.</text>`;
+  }).join("");
+}
+
+function drawMarks(){
+  C.forEach(c=>{
+    const vis = detected(c) || (c.lost && c.seen);
+    let m=MARK.get(c);
+    if(!vis){ if(m){m.el.remove();MARK.delete(c);} return; }
+    if(!m){ m=makeMark(c); MARK.set(c,m); }
+    const col = c.sigFail ? LV[0].col
+              : (c.noReach || (!c.probed && c.level===0)) ? "#8aa6b2"
+              : LV[c.level].col;
+    const live = detected(c);
+    const px = live ? c.x : c.lostX, py = live ? c.y : c.lostY;
+    const x=px.toFixed(1), y=py.toFixed(1), rad=Math.PI*c.course/180;
+    m.el.setAttribute("opacity", live ? "1" : "0.45");
+    m.el.setAttribute("aria-label",shownName(c));
+    m.ring.setAttribute("cx",x); m.ring.setAttribute("cy",y);
+    m.ring.setAttribute("r",sel===c?13:9);
+    m.ring.setAttribute("fill","none"); m.ring.setAttribute("stroke",col);
+    m.ring.setAttribute("stroke-width",sel===c?1.6:1);
+    m.ring.setAttribute("opacity",sel===c?1:.75);
+    m.dot.setAttribute("cx",x); m.dot.setAttribute("cy",y);
+    m.dot.setAttribute("fill",col);
+    m.dot.setAttribute("fill-opacity",c.surfaced?1:0.45);
+    m.vec.setAttribute("x1",x); m.vec.setAttribute("y1",y);
+    m.vec.setAttribute("x2",(px+Math.sin(rad)*16).toFixed(1));
+    m.vec.setAttribute("y2",(py-Math.cos(rad)*16).toFixed(1));
+    m.vec.setAttribute("stroke",col);
+    m.hit.setAttribute("cx",x); m.hit.setAttribute("cy",y);
+    const right = px > 430;
+    m.txt.setAttribute("x",(right ? px-16 : px+16).toFixed(1));
+    m.txt.setAttribute("y",(py+4).toFixed(1));
+    m.txt.setAttribute("text-anchor", right ? "end" : "start");
+    m.txt.setAttribute("fill",c.probed?"#e8f1f4":"#8aa6b2");
+    const core = inCore(c);
+    const label = core ? "" : (live ? "" : "последнее положение · ") + shownName(c)
+        + (c.group && c.level>=2 ? " · вне ядра группы" : "")
+        + (c.surfaced?"":" \u25be");
+    if(m.txt.textContent!==label) m.txt.textContent=label;
+  });
+}
+
+/* ===== ход времени ===== */
+function tick(ts){
+  requestAnimationFrame(tick);
+  if(!lastTs){lastTs=ts;return;}
+  const dtReal=(ts-lastTs)/1000; lastTs=ts;
+  if(timeScale===0) return;
+  const dt=dtReal*timeScale;
+  simTime+=dt;
+  document.getElementById("clock").textContent=
+    String(Math.floor(simTime/60)).padStart(2,"0")+":"+String(Math.floor(simTime%60)).padStart(2,"0");
+
+  let changed=false;
+  C.forEach(c=>{
+    const was = c._det === true;          // состояние с прошлого кадра, а не пересчёт по новому времени
+    if(simTime>=c.enter){
+      const rad=Math.PI*c.course/180;
+      c.x+=Math.sin(rad)*c.speed*dt/SCALE;
+      c.y-=Math.cos(rad)*c.speed*dt/SCALE;
+    }
+    if(c.diveAt && !c.dived && simTime>=c.diveAt){c.dived=true;dive(c,true);changed=true;}
+    const now=detected(c);
+    c._det = now;
+    if(now!==was){
+      changed=true;
+      if(now){
+        c.lost = false; c.seen = true;
+        log(`${c.tag}: новый контакт · ${c.surfaced?"радиоканал":"узел mesh-сети"}, `+
+            `${(nearestNode(c).m/1000).toFixed(1)} км от узла`,"hi");
+        if(autoPoll && !c.probed && !autoQueue.includes(c)) autoQueue.push(c);
+      } else {
+        c.lost = true; c.lostX = c.x; c.lostY = c.y;
+        const r = reach(c);
+        log(`${shownName(c)}: контакт потерян · ближайший узел в ${(r.m/1000).toFixed(1)} км`,"warn");
+        log(`радиоканал недоступен под водой, акустическая дальность 3 км — запрос не доходит`,"warn");
+      }
+    }
+  });
+  if(autoPoll && !busy && autoQueue.length){
+    const c = autoQueue.shift();
+    if(detected(c) && !c.probed) autoInterrogate(c);
+  }
+  if(sel) updateParams();
+  drawGroups(); drawMarks();
+  if(changed) render();
+}
+
+function log(msg,cls){
+  const box=document.getElementById("log");
+  const d=document.createElement("div");
+  d.innerHTML=`<span class="tm">${new Date().toLocaleTimeString("ru-RU")}</span> <span class="${cls||""}">${msg}</span>`;
+  box.appendChild(d); box.scrollTop=box.scrollHeight;
+}
+
+/* ===== карточка ===== */
+function render(){
+  drawGroups(); drawMarks();
+  const box=document.getElementById("card");
+  updateParams();
+  if(!sel){box.innerHTML='<p class="note" style="margin:0">Выберите отметку на карте.</p>';renderInternals();return;}
+  const c=sel, L=LV[c.level], shown=c.level>=2;
+  const badge = c.sigFail
+    ? '<span class="badge b-unknown">Идентичность отклонена</span>'
+    : c.noReach
+    ? '<span class="badge b-gray">Вне покрытия</span>'
+    : (!c.probed && c.level===0)
+      ? '<span class="badge b-gray">Не опрошен</span>'
+      : `<span class="badge ${L.cl}">${L.n}</span>`;
+  const d1 = c.disc>=1, d2 = c.disc>=2;
+  const rows=[
+    ["Обозначение",c.tag],
+    ["Имя аппарата", shown ? (c.name||"не предъявлено") : null],
+    ["Дистанция",(curDist(c)/1000).toFixed(1)+" км"],
+    ["Канал",c.medium + (c.surfaced===false?" · под водой":c.surfaced?" · у поверхности":"")],
+    ["Зона", zoneOf(c).name],
+    ["Состояние", detected(c) ? "в зоне покрытия" : "вне покрытия · последнее известное положение"],
+    ["Канал связи с оператором", shown ? (c.ctrl || "не предъявлен") : null],
+    ["Состав группы", c.group&&c.level>=2 ? groupOf(c.group).map(m=>m.tag).join(", ")+(c.gateway?" · шлюз здесь":"") : null],
+    ["Тип", shown&&c.cls?PLATFORM[c.cls.platform]:(c.level===1?(c.portrait||"по портрету"):"—")],
+    ["Размер", shown&&c.cls?SIZE[c.cls.size]:"—"],
+    ["Управление", shown&&c.cls?CONTROL[c.cls.control]:"—"],
+    ["Автономность", shown&&c.cls?ENDUR[c.cls.endur]:"—"],
+    ["Номер MDID", shown&&c.mdid?"0x"+c.mdid.toString(16).toUpperCase():null],
+    ["Категория миссии", shown&&c.cls?MISSION[c.mission]:null],
+    ["Допуск", shown?(c.permit?"предъявлен":"не предъявлен"):null],
+    ["Владелец", shown&&c.owner?c.owner:null],
+    ["Разрешение", shown?(c.permit?"№ 0x"+c.permit.toString(16).toUpperCase():"отсутствует"):null],
+    ["План миссии", shown?(c.secret&&!d2?"закрытая миссия · доступна владельцу акватории":c.port):null],
+    ["__1Соседние аппараты получают", d1?(c.secret?"идентификатор, класс, допуск · миссия закрыта":"идентификатор, класс, миссия, допуск"):null],
+    ["__2Телеметрия сторонним", d2?"раскрыта по инциденту":null]
+  ].filter(([k])=> !(k.startsWith("__1")&&!shown) && !(k.startsWith("__2")&&!shown)
+                && !(k==="Состав группы" && !c.group));
+  box.innerHTML =
+    `<div style="margin-bottom:12px">${badge}`+
+    (c.group&&c.level>=2
+      ? `<span class="badge b-known" style="margin-left:6px">группа «${c.name}» · ${groupOf(c.group).length} ед.${c.gateway?" · шлюз":""}</span>`
+      : "")+`</div>`+
+    (c.probed?(()=>{const t=threatOf(c);return `<div class="threat ${t.lvl.cl}">
+       <div class="hdr"><span>Оценка угрозы</span><span class="lvl">${t.lvl.n}</span></div>
+       <div class="why">${t.why}</div></div>`;})():"")+
+    rows.map(([k,v])=>{
+      const lvl = k.startsWith("__1")?1 : k.startsWith("__2")?2 : 0;
+      const name = k.replace(/^__[12]/,"");
+      const msg = lvl===0 ? "закрыто до опознания"
+                : lvl===1 ? "не определено"
+                          : "закрыто · нет инцидента";
+      return v===null
+        ?`<div class="row"><span class="k">${name}</span><span class="v masked">${msg}</span></div>`
+        :`<div class="row"><span class="k">${name}</span><span class="v">${v}</span></div>`;
+    }).join("")+
+    (c.level===2 && !c.sigFail && !c.sigDone
+      ? `<div class="unverified"><strong>Данные приняты из кадра 1 и не подтверждены.</strong>
+         Кадр 1 можно записать и воспроизвести — он не доказывает принадлежность.
+         Запросите кадр 2: аппарат подпишет случайное число ключом, которого нет у копии.</div>`:"")+
+    (c.level===3
+      ? `<div class="verified"><strong>Данные подтверждены кадром 2.</strong>
+         Аппарат подписал случайное число закрытым ключом, подпись проверена открытым ключом
+         из реестра. Воспроизведение записи такую проверку не проходит.</div>`:"")+
+    (c.dupAlarm?`<div class="alarm"><strong>Тревога:</strong> номер уже предъявлен другим контактом в этом цикле. Два ответа с одинаковым MDID — признак воспроизведения перехваченного сигнала.</div>`:"")+
+    (c.sigFail?`<div class="alarm"><strong>Подпись не прошла проверку.</strong> Данные ниже взяты из
+       кадра 1 и могут быть воспроизведением чужого перехваченного ответа —
+       принадлежность аппарата не доказана. Открытый ключ из реестра не подтверждает подпись случайного числа. Уровень «подтверждён» не присваивается.</div>`:"")+
+    (c.slotView?`<div class="slots">${c.slotView}</div>`:"")+
+    (c.level===3?`<div class="cool" style="border-left-color:var(--ok);background:rgba(63,182,139,.10);color:#a8e3cb">
+       <strong>Идентификация завершена.</strong> Повторный опрос не требуется до истечения срока
+       сертификата — 30 суток. Канал освобождён для других контактов.</div>`:"")+
+    (c.sigDone&&c.level<3?`<div class="cool"><strong>Подпись запрошена и не подтверждена.</strong>
+       Повторный запрос кадра 2 не изменит результата и занял бы канал ещё на
+       ${cycleTime(curDist(c),AIR_SIGN).toFixed(0)} с. Основание для уровня 2 уже установлено.</div>`:"")+
+    (c.cooldown?`<div class="cool"><strong>Норматив интервала.</strong> Следующий цикл опроса разрешён
+       через ${(c.cooldown/60).toFixed(0)} мин. ${c.level>=2
+         ? "Аппарат опознан — частый повторный опрос занимал бы канал без необходимости."
+         : "Это полный цикл погружения аппарата; молчание в его пределах не считается уклонением."}</div>`:"")+
+    (shown?(()=>{
+      const g=incidentGround(c), fact=groundIsFact(c), verified=(c.level===3);
+      let tail="", form="";
+
+      if(!verified){
+        tail = c.sigFail
+          ? `Раскрытие по инциденту закрыто: <strong>подлинность не подтверждена</strong>. Номер принадлежит
+             другому аппарату, и раскрытие его плана миссии по заявлению неподтверждённого
+             контакта нанесло бы ущерб законному владельцу.`
+          : `Раскрытие по инциденту закрыто: идентичность не подтверждена. Сначала запросите кадр 2 —
+             раскрывать данные владельца по непроверенному заявлению нельзя.`;
+      } else if(!g){
+        tail = "Раскрытие по инциденту закрыто: правового основания нет. Коммерческая тайна оператора аппарата защищена.";
+        form = c.pending
+          ? `<div class="incident"><div class="t">Основание: ${c.declared}</div>
+               <div class="pending">Запрос направлен в портовую администрацию · ожидание подтверждения…</div></div>`
+          : `<div class="incident"><div class="t">Объявить инцидент — укажите основание</div>
+               <select id="selG"><option value="">— не выбрано —</option>
+                 ${GROUNDS.map(x=>`<option value="${x}">${x}</option>`).join("")}</select>
+               <button id="bDecl">Направить на подтверждение</button></div>`;
+      } else {
+        tail = fact ? "Основание установлено системой: "+g
+                    : "Основание подтверждено портовой администрацией · "+c.declared;
+      }
+
+      return `<div class="disc"><div class="t">Что видят другие</div>
+       <div class="t" style="margin:0 0 6px">Вам как центру акватории данные выше доступны полностью.
+       Ниже — что из них получают соседние аппараты и сторонние запросы.</div>
+       <button id="bD1" ${c.disc>=1?"disabled":""}>Сообщать соседним аппаратам</button>
+       <button id="bD2" ${c.disc>=2||!verified||!g?"disabled":""}>Раскрыть по инциденту</button>
+       <div class="t" style="margin:7px 0 0">${tail}</div>
+       ${c.disc>=1&&!verified?`<div class="t" style="margin:5px 0 0;color:var(--class)">
+         Эти сведения относятся к заявленному номеру. Принадлежность контакта не подтверждена —
+         это сведения о том, чьей личностью он представился.</div>`:""}
+       ${form}</div>`;})()
+     : (c.probed?`<div class="disc"><div class="t">Что видят другие</div>
+         <div class="t" style="margin:0">Нечего показывать: идентификатор не получен, обращение к реестру
+         не с чем. Доступна только пассивная классификация по акустическому портрету.</div></div>`:""))+
+    (shown && c.ctrl ? `<div class="cmd"><div class="t">Взаимодействие с аппаратом</div>
+       <button id="bRec">Рекомендация через оператора</button>
+       <button id="bStop" ${c.level===3?"":"disabled"}>Экстренная команда · стоп</button>
+       <div class="t" style="margin:7px 0 0">Рекомендации идут через центр управления владельца.
+       Экстренная команда исполняется на борту напрямую, но только по сертификату портовой
+       администрации и при подтверждённой подлинности — обе стороны подписывают каждую.</div></div>`:"")+
+    `<div class="progress"><i id="bar"></i></div>
+     <div class="actions">
+       <button class="act primary" id="bInt" ${busy||c.cooldown||c.level===3?"disabled":""}>Опросить</button>
+       <button class="act" id="bSig" ${busy||c.level<2||c.level===3||c.sigDone?"disabled":""}>Запросить кадр 2 · подпись</button>
+       ${c.amphibious?`<button class="act" id="bDive" ${busy?"disabled":""}>${c.surfaced?"Погружение":"Всплытие"}</button>`:""}
+       <button class="act" id="bRst" ${busy?"disabled":""}>Сброс</button>
+     </div>
+     <div class="measures">
+       <div class="t">${c.sigFail ? "Заявленная идентичность отклонена — требуются меры"
+                     : c.noReach ? "Запрос не дошёл — контакт вне зоны покрытия"
+                     : (!c.probed && c.level===0) ? "Контакт обнаружен, опрос не проводился"
+                     : "Допустимые меры на этом уровне"}</div>
+       <ul>${(c.sigFail
+           ? ["Отказ в допуске в зону",
+              "Вывод из зоны под сопровождением",
+              "Оповестить владельца номера, под которым выступает контакт",
+              "Запись в журнал обязательна · основание для раскрытия по инциденту установлено"]
+           : c.noReach
+           ? ["Наблюдение за последним известным положением",
+              "Направить средство опроса или уплотнить mesh-сеть в районе контакта",
+              "Отказ от идентификации не фиксируется: аппарат физически не мог получить запрос"]
+           : (!c.probed && c.level===0) ? ["Начать процедуру опроса"] : L.m
+         ).map(m=>`<li>${m}</li>`).join("")}</ul>
+       <div class="t" style="margin:8px 0 0;color:var(--class)">Независимо от уровня не допускаются
+       меры, создающие угрозу людям или экосистеме акватории.</div></div>`;
+  document.getElementById("bInt").onclick=interrogate;
+  document.getElementById("bSig").onclick=requestSignature;
+  const btnD1=document.getElementById("bD1"), btnD2=document.getElementById("bD2");
+  if(btnD1) btnD1.onclick=()=>{c.disc=1;
+    log(`${shownName(c)}: определён состав данных для соседних аппаратов`+
+        (c.secret?" · миссия закрыта, известна только владельцу акватории":""),"hi");render();};
+  if(btnD2) btnD2.onclick=()=>{const g=incidentGround(c); if(!g||c.level!==3) return; c.disc=2;
+    log(`${shownName(c)}: раскрытие по инциденту · полный план миссии и телеметрия сторонним`,"warn");
+    log(`основание (${groundIsFact(c)?"установлено системой":"заявление оператора, подтверждено"}): ${g}`,"warn");
+    log("запись внесена в журнал · раскрытие необратимо");render();};
+  const btnRec=document.getElementById("bRec");
+  if(btnRec) btnRec.onclick=()=>{
+    log(`${shownName(c)}: рекомендация направлена в ${c.ctrl.split(" · ")[0]}`,"hi");
+    log(`канал ${c.ctrl.split(" · ")[1]} · управление аппаратом остаётся у владельца`);};
+  const btnStop=document.getElementById("bStop");
+  if(btnStop) btnStop.onclick=()=>{
+    log(`${shownName(c)}: экстренная команда «стоп» · подписана сертификатом портовой администрации`,"warn");
+    log(`команда принята на борту и подписана аппаратом · обе подписи в журнале`,"good");
+    log(`уведомление продублировано в ${c.ctrl.split(" · ")[0]}`);};
+  const btnDecl=document.getElementById("bDecl");
+  if(btnDecl) btnDecl.onclick=()=>{
+    const sel2=document.getElementById("selG"), v=sel2?sel2.value:"";
+    if(!v){log("основание не выбрано · запрос не направлен","warn");return;}
+    c.declared=v; c.pending=true; c.approved=false;
+    log(`${shownName(c)}: заявлен инцидент — ${v}`,"warn");
+    log("запрос на раскрытие уровня 2 направлен в портовую администрацию");
+    render();
+    setTimeout(()=>{c.pending=false;c.approved=true;
+      log(`${shownName(c)}: портовая администрация подтвердила основание`,"warn");
+      if(sel===c)render();}, realTime?12000:3500);
+  };
+  const dv=document.getElementById("bDive");
+  if(dv) dv.onclick=()=>dive(c);
+  document.getElementById("bRst").onclick=()=>{
+    C.forEach(x=>{x.level=0;x.probed=false;x.tries=0;x.dupAlarm=false;x.sigFail=false;
+      x.sigHex=null;x.disc=0;x.slotView=null;x.cooldown=0;x.declared=false;x.pending=false;x.approved=false;x.sigDone=false;x._det=false;x.lost=false;x.seen=false;x.noReach=false;
+      if(x.amphibious){x.surfaced=true;x.medium="УКВ";x.dived=false;}});
+    sel=null;render();log("состояние сброшено");};
+  renderInternals();
+}
+
+function runCycle(sec,done){
+  busy=true;render();
+  const shown = realTime ? sec : Math.min(sec,5);
+  const bar=document.getElementById("bar"), t0=performance.now();
+  (function step(){
+    const p=Math.min((performance.now()-t0)/(shown*1000),1);
+    if(bar)bar.style.width=(p*100).toFixed(1)+"%";
+    if(p<1)requestAnimationFrame(step); else {busy=false;done();}
+  })();
+}
+
+function dive(c, auto){
+  if(c.surfaced){
+    c.surfaced=false; c.medium="гидроакустика";
+    c.level=Math.min(c.level,1); c.disc=0; c.sigHex=null; c.sigDone=false;
+    const nn=nearestNode(c);
+    log(`${shownName(c)}: уход под воду${auto?" (по плану миссии)":""} · радиоканал недоступен`,"warn");
+    if(nn.px>R_AC)
+      log(`ближайший узел mesh-сети в ${(nn.m/1000).toFixed(1)} км — вне акустической дальности 3 км. `+
+          `Контакт уходит в серую зону`,"warn");
+    else
+      log(`перехвачен акустическим узлом в ${(nn.m/1000).toFixed(1)} км · цикл вырос до `+
+          `${cycleTime(nn.m).toFixed(0)} с против долей секунды по УКВ`,"hi");
+  } else {
+    c.surfaced=true; c.medium="УКВ";
+    log(`${shownName(c)}: всплытие · доступен радиоканал и спутниковая привязка`,"good");
+  }
+  c.cooldown=0;
+  render();
+}
+
+async function interrogate(){
+  const c=sel; c.probed=true; c.tries=(c.tries||0)+1; c.sigFail=false;
+  const r = reach(c);
+  const d = curDist(c);
+  const t = cycleTime(d);
+  const nonce = newNonce(); c.nonce = nonce;
+
+  log(`${shownName(c)}: запрос по двум каналам одновременно · случайное число ${b2h(nonce.buffer).slice(0,8)}…`);
+  log(`радио ${r.rf?"достаёт":"не достаёт"} · гидроакустика ${r.ac?"достаёт":"не достаёт"} · ` +
+      `до узла ${(r.m/1000).toFixed(1)} км`);
+
+  // ни один канал не достаёт — ответа не будет физически
+  if(!r.rf && !r.ac){
+    c.noReach = true; c.tries = Math.max(0, c.tries-1);   // попытка не засчитывается
+    runCycle(t, ()=>{
+      log(`${shownName(c)}: ответа нет — запрос не дошёл. Радиоканал недоступен под водой, ` +
+          `акустическая дальность 3 км, до узла ${(r.m/1000).toFixed(1)} км`,"warn");
+      log(`это не уклонение аппарата, а разрыв покрытия mesh-сети`,"warn");
+      render();
+    });
+    return;
+  }
+
+  c.noReach = false;
+  log(`расчётный цикл ${t.toFixed(1)} с на дистанции ${(d/1000).toFixed(1)} км` + (realTime?"":" · показ сжат"));
+  runCycle(t, ()=>{
+    if(!c.answers){
+      if(c.tries===1){c.level=1;log(`${shownName(c)}: ответа нет · классификация по акустическому портрету`,"hi");log(`портрет: ${c.portrait}`);}
+      else if(c.tries<3){c.level=1;
+        log(`${shownName(c)}: цикл ${c.tries} из 3 · ответа нет, молчание не равно враждебности`);
+        setCooldown(c);}
+      else{c.level=0;log(`${shownName(c)}: процедура исчерпана · статус «не опознан»`,"warn");}
+    } else {
+      c.level=2;
+      log(`${shownName(c)}: принят кадр 1 по каналу «${r.ac&&!r.rf?"гидроакустика":"УКВ"}» · ` +
+          `128 бит, ${AIR_RESP} бит в эфире`,"hi");
+      log(`опознан · данные владельца доступны центру акватории`);
+      const dup=C.find(o=>o!==c && o.level>=2 && o.mdid===c.mdid);
+      if(dup){c.dupAlarm=true;log(`тревога: номер 0x${c.mdid.toString(16).toUpperCase()} уже предъявлен контактом «${dup.tag}»`,"warn");}
+      if(c.group) groupPoll(c);
+      repollGuard(c);
+    }
+    render();
+  });
+}
+
+async function requestSignature(){
+  const c=sel, t=cycleTime(curDist(c),AIR_SIGN);
+  log(`${shownName(c)}: запрошен кадр 2 · подпись по случайному числу`);
+  log(`расчётный цикл ${t.toFixed(1)} с · ${AIR_SIGN} бит в эфире`);
+  const nonce=c.nonce||newNonce();
+  let sig=null;
+  if(c.hasKey) sig=await signNonce(c.mdid,nonce);
+  else if(c.spoof) sig=crypto.getRandomValues(new Uint8Array(64)).buffer; // подделка
+  runCycle(t, async ()=>{
+    const ok = await verifyNonce(c.mdid,nonce,sig);
+    c.sigHex = sig ? b2h(sig) : null;
+    c.sigDone=true;
+    if(ok){
+      c.level=3; c.sigFail=false;
+      log(`${shownName(c)}: подпись ECDSA P-256 проверена офлайн · статус «подтверждён»`,"good");
+      if(c.dupAlarm){
+        c.dupAlarm=false;
+        log(`спор о номере 0x${c.mdid.toString(16).toUpperCase()} разрешён: владение ключом доказано`,"good");
+        C.forEach(o=>{ if(o!==c && o.mdid===c.mdid && o.level>=2){
+          o.dupAlarm=true;
+          log(`${o.tag}: остаётся под подозрением — предъявляет тот же номер без доказательства`,"warn");
+        }});
+      }
+    }
+    else{
+      c.level=2; c.sigFail=true;
+      log(`${shownName(c)}: подпись не прошла проверку открытым ключом из реестра`,"warn");
+      log(`${c.tag}: заявленная идентичность отклонена · допуск аннулирован, требуется вывод из зоны`,"warn");
+      const real = C.find(o=>o!==c && o.mdid===c.mdid && o.hasKey);
+      if(real) log(`оповещение владельцу номера 0x${c.mdid.toString(16).toUpperCase()}: ` +
+                   `под ним в акватории выступает посторонний контакт`,"warn");
+    }
+    render();
+  });
+}
+
+// повторный опрос опознанного аппарата допустим не чаще норматива
+function repollGuard(c){
+  const iv = c.surfaced===false || c.medium==="гидроакустика" ? 600 : 300;
+  c.cooldown = iv;
+  const wait = realTime ? 10000 : 3000;
+  setTimeout(()=>{ c.cooldown=0; if(sel===c) render(); }, wait);
+}
+
+function setCooldown(c){
+  const iv = c.depth&&c.vvert ? 2*c.depth/c.vvert : 1200;   // секунд
+  c.cooldown = iv;
+  log(`следующий цикл разрешён через ${(iv/60).toFixed(0)} мин — полный цикл погружения`);
+  const wait = realTime ? 15000 : 4000;                     // на демонстрации сокращено
+  setTimeout(()=>{ c.cooldown=0; if(sel===c) render(); }, wait);
+}
+
+function groupPoll(c){
+  const gw = gatewayOf(c.group) || c;
+  const members = groupOf(c.group);
+  const n = members.length;
+  const d = curDist(gw);
+  const tg = groupTime(d, n), ts = n * cycleTime(d);
+  members.forEach((m,i)=>{
+    if(m.level < 2){ m.level = 2; m.probed = true; }
+    m.slot = i;
+  });
+  const rows = members.map((m,i)=>
+    `окно ${i}  ·  ${m.tag}  ·  MDID …${m.roster?m.roster[i]:m.mdid.toString(16).slice(-4).toUpperCase()}  ·  ответ принят`
+  ).join("<br>");
+  const view =
+    `<b>Групповой опрос · ${n} аппарата</b><br>${rows}<br>` +
+    `окно ${slotTime(d).toFixed(1)} с · весь цикл <b>${tg.toFixed(0)} с</b> ` +
+    `против ${ts.toFixed(0)} с при поочерёдном опросе`;
+  members.forEach(m=>{ m.slotView = view; });
+  log(`шлюзовой узел ${gw.tag} ответил за группу «${gw.name}» · ${n} аппарата`,"hi");
+  log(`окна распределены по составу группы · цикл ${tg.toFixed(0)} с вместо ${ts.toFixed(0)} с, ` +
+      `выигрыш ${(ts/tg).toFixed(1)}x`,"good");
+  const stray = members.find(m=>m.strays);
+  if(stray) log(`${stray.tag} удаляется от группы, но остаётся её членом — принадлежность по идентификатору, а не по расстоянию`);
+}
+
+/* ===== параметры ===== */
+function updateParams(){
+  const out=document.getElementById("pOut");
+  if(!sel){out.textContent="Контакт не выбран. Цикл опроса зависит от дистанции до ближайшего узла.";return;}
+  const d=curDist(sel), nn=nearestNode(sel);
+  out.textContent=`${shownName(sel)} · до ближайшего узла mesh-сети ${(d/1000).toFixed(1)} км · `+
+    `цикл ${cycleTime(d).toFixed(1)} с · с подписью ${cycleTime(d,AIR_SIGN).toFixed(1)} с · норматив 30 с`;
+}
+
+document.getElementById("pRate").addEventListener("input",e=>{
+  RATE=Math.max(10,+e.target.value||92); updateParams(); renderInternals();});
+document.getElementById("pAuto").addEventListener("change",e=>{
+  autoPoll=e.target.checked;
+  log(autoPoll ? "автоматический опрос включён · оператор подключается только при повышенной угрозе"
+               : "автоматический опрос выключен · опрос вручную");});
+document.getElementById("pSpeed").addEventListener("change",e=>{
+  timeScale=+e.target.value; realTime=(timeScale===1);
+  log(timeScale===0?"обстановка на паузе":`ход времени ×${timeScale}`);});
+
+/* ===== под капотом ===== */
+function renderInternals(){
+  const lab=document.getElementById("frameFor"),bits=document.getElementById("bits"),
+        hx=document.getElementById("hex"),ct=document.getElementById("clsTable"),
+        cc=document.getElementById("calc"),sl=document.getElementById("sigLabel"),
+        sh=document.getElementById("sigHex"),cn=document.getElementById("calcNote");
+  cn.textContent=`Скорость канала ${RATE} бит/с. Помехоустойчивое кодирование 1/2, преамбула синхронизации 200 бит, скорость звука 1500 м/с. Паспортная скорость модема EvoLogics S2C — до 9200 бит/с на дистанции 4 км.`;
+  if(!sel||!sel.mdid){
+    lab.textContent=sel?`${shownName(sel)}: аппарат не передаёт кадр, идентификация только пассивная.`:"Контакт не выбран.";
+    bits.innerHTML="";hx.textContent="—";ct.innerHTML="";cc.innerHTML="";
+    sl.style.display="none";sh.style.display="none";return;}
+  const c=sel;
+  lab.textContent=`${shownName(c)} · поля кадра и их разрядность`;
+  const f=[["версия",bin(1n,4),4],["MDID",bin(c.mdid,64),64],
+    ["код класса",bin(packClass(c.cls),16),16],["миссия",bin(BigInt(c.mission),4),4],
+    ["флаги",bin(BigInt(c.flags),8),8],["хеш допуска",bin(BigInt(c.permit),16),16],
+    ["CRC",bin(BigInt(c.crc),16),16]];
+  bits.innerHTML=f.map(([n,b,w])=>`<div class="bitfield" style="flex-basis:${w*2.4}%">
+    <span class="n">${n} · ${w}</span><span class="b">${b}</span></div>`).join("");
+  hx.textContent=hex(packFrame(c));
+  if(c.sigHex){
+    sl.style.display=""; sh.style.display="";
+    sh.textContent="0x"+c.sigHex;
+    sh.classList.toggle("bad", !!c.sigFail);
+    sl.innerHTML = c.sigFail
+      ? 'Принято 512 бит в поле подписи. Проверка открытым ключом из реестра: '+
+        '<strong style="color:var(--unknown)">не пройдена</strong> — значение не является подписью '+
+        'этого случайного числа ключом заявленного номера.'
+      : 'Подпись ECDSA P-256 по случайному числу, 512 бит. Проверка открытым ключом из реестра: '+
+        '<strong style="color:var(--ok)">пройдена</strong>.';
+  }
+  else{sl.style.display="none";sh.style.display="none";}
+  const cl=c.cls;
+  ct.innerHTML="<tr><th>Подполе</th><th class='num'>Бит</th><th>Значение</th></tr>"+
+    [["тип платформы",3,PLATFORM[cl.platform]],["размерная группа",3,SIZE[cl.size]],
+     ["режим управления",2,CONTROL[cl.control]],["энергоустановка",2,POWER[cl.power]],
+     ["автономность",3,ENDUR[cl.endur]],["принадлежность",3,OWNER[cl.owner]]]
+    .map(([a,b,d])=>`<tr><td>${a}</td><td class="num" style="width:3.5em">${b}</td>`+
+         `<td style="padding-left:18px">${d}</td></tr>`).join("");
+  const prop=curDist(c)/VSOUND;
+  cc.innerHTML="<tr><th>Составляющая</th><th class='num'>Расчёт</th><th class='num'>Секунд</th></tr>"+
+    [["передача запроса",`${AIR_INT} бит / ${RATE} бит/с`,AIR_INT/RATE],
+     ["распространение к аппарату",`${curDist(c)} м / ${VSOUND} м/с`,prop],
+     ["передача ответа",`${AIR_RESP} бит / ${RATE} бит/с`,AIR_RESP/RATE],
+     ["распространение к берегу",`${curDist(c)} м / ${VSOUND} м/с`,prop],
+     ["обработка и разбор","константа",PROC]]
+    .map(([a,b,v])=>`<tr><td>${a}</td><td class="num">${b}</td><td class="num">${v.toFixed(2)}</td></tr>`).join("")+
+    `<tr class="total"><td>Полный цикл</td><td class="num">норматив 30 с</td>
+     <td class="num">${cycleTime(curDist(c)).toFixed(1)}</td></tr>`;
+}
+
+/* ===== вкладки ===== */
+document.querySelectorAll('nav button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.setAttribute("aria-selected",x===b));
+    document.getElementById("p1").classList.toggle("hidden",b.id!=="t1");
+    document.getElementById("p2").classList.toggle("hidden",b.id!=="t2");};
+});
+
+/* ===== запуск ===== */
+(async ()=>{
+  drawCoverage(); drawGroups(); drawMarks(); render(); requestAnimationFrame(tick);
+  const uniq=[...new Set(C.filter(c=>c.hasKey).map(c=>c.mdid))];
+  for(const m of uniq) await issueCert(m);
+  document.getElementById("log").innerHTML="";
+  log(`реестр загружен · выдано сертификатов ECDSA P-256: ${uniq.length}`,"good");
+  log("пунктиром показано покрытие mesh-сети радиогидроакустических буёв · разрывы между узлами — серые зоны");
+  log("система готова · обстановка обновляется в реальном времени");
+  log("автоматический опрос выключен — включите в параметрах, чтобы система работала без оператора");
+})();
+</script>
+</body>
+</html>
